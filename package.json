@@ -1,0 +1,21 @@
+{
+  "name": "seekstar-techmap",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @seekstar/techmap-api dev",
+    "start:api": "pnpm --filter @seekstar/techmap-api start",
+    "build": "pnpm --filter './packages/**' run build && pnpm --filter @seekstar/techmap-api build",
+    "typecheck": "pnpm --filter './packages/**' run typecheck && pnpm --filter @seekstar/techmap-api typecheck",
+    "db:migrate": "pnpm --filter @seekstar/storage-postgres migrate",
+    "data:import": "pnpm --filter @seekstar/storage-postgres import"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^6.0.0"
+  }
+}

@@ -18,9 +18,12 @@ If a request conflicts with the PRD, do not silently implement the conflict. Cal
 
 ## Current Phase
 
-The repository is currently in product-definition mode. Do not scaffold an application, install dependencies, create deployment infrastructure, or begin implementation unless the user explicitly authorizes an engineering phase in a later task.
+The repository is in a **backend-first local engineering phase**. Implement and validate the real Fastify service before any frontend work. The service is a single local program bound to `127.0.0.1:4000`, consuming an immutable release from the separate `E:\techmap-data` repository through PostgreSQL.
 
-Documentation-only tasks must not create placeholder source trees or speculative package manifests.
+- Do not create a frontend, Docker configuration, deployment split, Mock Server, or fixture-only provider in this phase.
+- Write the complete business implementation, PostgreSQL adapter, migrations, importer, and all twelve contract operations before authoring or executing automated tests.
+- After code freeze, tests must use a real local PostgreSQL test database and a real Fastify process. Record timestamped uncommitted reports under `docs/validation/local/` and promote only reviewed summaries into versioned documentation.
+- Local connection strings belong only in ignored environment files. The default PostgreSQL data directory is `E:\SeekStarLocal\postgres`; the application database is `techmap_local`.
 
 ## Product Invariants
 
@@ -70,7 +73,7 @@ When engineering is explicitly authorized, use the frozen baseline:
 - TanStack Query for server state.
 - Fastify with REST/OpenAPI.
 - PostgreSQL with Drizzle and reviewed raw SQL where graph queries need it.
-- Docker Compose on one self-hosted Linux host for the first release.
+- Docker Compose on one self-hosted Linux host for a later deployment phase; it is explicitly out of scope for current local backend work.
 
 Do not swap frameworks, renderers, databases, package managers, or deployment shape as a local convenience. A baseline change needs a decision record.
 
@@ -143,7 +146,7 @@ No WebGL2 means the product enters basic search/detail mode. Do not pretend a bl
 
 ## Required Validation
 
-Once scripts exist, the root workspace must expose these commands and agents must run the relevant set before declaring work complete:
+After the backend business implementation is frozen, the root workspace must expose these commands and agents must run the relevant set before declaring the backend complete:
 
 ```text
 pnpm contract:lint

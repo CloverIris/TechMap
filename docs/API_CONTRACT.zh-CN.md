@@ -19,8 +19,8 @@
 
 这份契约使前端和后端可以在没有对方实现的情况下并行开发：
 
-- 前端只依赖 OpenAPI 生成的类型、Client 和 Mock 响应。
-- 后端只依赖 OpenAPI 的请求、响应与 Provider Contract Tests。
+- 前端只依赖 OpenAPI 生成的类型和 Client；当前阶段不以 Mock 响应作为开发前置条件。
+- 后端只依赖 OpenAPI 的请求、响应与真实 Provider Contract Tests。
 - 双方都不得从数据库表、编辑 YAML 或 React 组件反推另一套接口。
 - 任何技术实现可以替换，只要继续满足同一契约、性能和语义。
 
@@ -438,13 +438,13 @@ OpenAPI 只声明生产规范地址。开发、测试和预览环境通过生成
 - Logo 与其他资源必须来自批准的资产源，不允许运行时加载任意数据 URL。
 - 限流只用于匿名滥用保护，不建立长期访客标识。
 
-## 18. 生成、Mock 与契约测试
+## 18. 生成与真实 Provider 契约测试
 
 机器契约必须产生以下派生物，但派生物不得手工修改：
 
 - 前端 TypeScript 类型和 API Client。
 - 后端 Fastify 请求/响应校验类型。
-- 本地 Mock Server。
+- 本机真实 Fastify Provider，连接真实 PostgreSQL 测试数据库。
 - OpenAPI 文档预览。
 - Provider 与 Consumer Contract Test 输入。
 
@@ -453,7 +453,6 @@ OpenAPI 只声明生产规范地址。开发、测试和预览环境通过生成
 ```text
 pnpm contract:lint
 pnpm contract:breaking
-pnpm contract:mock
 pnpm contract:test
 ```
 
@@ -464,7 +463,7 @@ pnpm contract:test
 3. 用 Schema 验证内嵌示例。
 4. 与上一个契约版本执行 breaking-change 检查。
 5. 生成 Client 与 Server 类型，并验证无未提交差异。
-6. 前端测试对 Mock Server 运行。
+6. 后端测试对本机真实 Fastify Provider 运行。
 7. 后端 Provider Tests 对真实服务运行。
 8. 对响应头、缓存、压缩、错误和大小预算执行协议测试。
 
@@ -484,7 +483,7 @@ pnpm contract:test
 Breaking 变化必须：
 
 1. 建立决策记录。
-2. 说明前端、后端、Mock、缓存和旧部署影响。
+2. 说明前端、后端、真实 Provider、缓存和旧部署影响。
 3. 发布新路径主版本或提供明确的双版本迁移期。
 4. 在删除旧版本前验证生产客户端已迁移。
 
@@ -498,10 +497,10 @@ Breaking 变化必须：
 - 全部 `$ref` 可解析且无循环导致的生成失败。
 - Schema 对请求、成功响应和 Problem Details 都生效。
 - Bootstrap、三种 Layout、搜索、React 详情、slug 迁移、Guided Path、时代展开、四类叠层和遥测都有有效 Fixture。
-- Mock Server 能在没有后端的情况下完成前端核心流程。
+- 真实本机 Provider 能在没有前端的情况下完成全部契约流程。
 - 后端空实现可以针对同一 Provider Tests 得到明确失败项。
 - 搜索正文不会进入 URL、日志、Trace 或遥测。
 - 版本与 ETag 混用会被测试发现。
 - 压缩后响应满足大小预算。
 
-本轮只冻结契约文件和说明，不创建 Client、Server、Mock 或依赖。实现任务获得明确授权后再生成派生物。
+当前实施阶段先完成真实本机 Provider，不创建 Mock Server 或前端。业务代码和 PostgreSQL 适配完成后，才统一建立并执行真实 Provider 契约测试。
