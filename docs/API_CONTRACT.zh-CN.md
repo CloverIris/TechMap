@@ -231,6 +231,8 @@ Bootstrap 的 `ETag` 必须对应 locale 后的完整响应。前端可以使用
 - `cursor` 是不透明字符串，只对完全相同的数据版本、query、locale、过滤和 limit 有效。
 - 排序依次考虑正式名精确匹配、显示名、别名、缩写、拼音、前缀、子串和 trigram。
 - `match.kind` 只表达搜索相关性，不代表趋势、质量或推荐分。
+- `match.displayText` 是命中的实体文本，`highlightRanges` 使用相对该文本的 Unicode code point 半开区间。
+- `total` 只有在 `totalIsExact=true` 时保证为精确整数；否则可以为 `null`。
 - 响应不得回显搜索正文。
 - 搜索请求正文不得进入应用日志、Trace、分析事件或错误详情。
 
@@ -258,6 +260,9 @@ Atlas 的 Z 只表示浅浮雕；Stack 的 Z 表示抽象层；Time 的 Z 表示
 - `strata` 在 Stack 中提供抽象层带，在其他视图可以为空。
 - `lodBands` 使用 0 至 1 的 `semanticZoom`，不直接绑定 Three.js 相机距离。
 - `canonicalCamera` 和 `cameraConstraints` 定义标准构图，不进入分享 URL。
+- `timeScale` 在 Time 中给出年份与 Z 的映射及主刻度；Atlas、Stack 中为 `null`。
+
+Stack 的 `strata` 必须非空而 `timeScale` 为 `null`；Time 的 `timeScale` 必须非空；Atlas 两者都不承担垂直事实。该视图条件由语义契约测试验证。
 
 前端不得重新计算或随机调整正式节点位置，也不得通过文字测量反向改变区域尺寸。
 
@@ -334,6 +339,8 @@ Resolver 返回以下状态：
 - 明确的 `Cache-Control`
 
 版本化资源使用强 ETag。locale 是表示的一部分，因此不同 locale 必须产生不同 ETag。
+
+OpenAPI 只声明生产规范地址。开发、测试和预览环境通过生成 Client 的 Base URL 配置注入，不把 `localhost` 或临时域名写入冻结契约。
 
 ### 13.2 缓存
 

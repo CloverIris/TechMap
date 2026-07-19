@@ -26,8 +26,6 @@ x-public-api: false
 servers:
   - url: https://techmap.seekstar.ai/api/internal/v1
     description: Production, same-origin API
-  - url: http://localhost:3001/api/internal/v1
-    description: Local backend development
 
 security: []
 
@@ -339,6 +337,8 @@ paths:
                   $ref: '#/components/examples/SearchReact'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '410':
           $ref: '#/components/responses/Gone'
         '413':
@@ -520,6 +520,8 @@ paths:
           $ref: '#/components/responses/NotModified'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '410':
           $ref: '#/components/responses/Gone'
         '429':
@@ -788,8 +790,6 @@ components:
       headers:
         ETag:
           $ref: '#/components/headers/ETag'
-        Cache-Control:
-          $ref: '#/components/headers/ImmutableCacheControl'
         X-Request-Id:
           $ref: '#/components/headers/RequestId'
         X-TechMap-Contract-Version:
@@ -1070,7 +1070,8 @@ components:
 
     StatementStatus:
       type: string
-      enum: [candidate, accepted, disputed, retracted]
+      description: Candidate statements never enter the product read API.
+      enum: [accepted, disputed, retracted]
 
     LifecycleStatus:
       type: string
@@ -1276,6 +1277,7 @@ components:
           type: array
           minItems: 12
           maxItems: 12
+          uniqueItems: true
           items:
             $ref: '#/components/schemas/RootDomainSummary'
 
@@ -1665,6 +1667,28 @@ components:
           type: integer
           minimum: 0
 
+    TimeScale:
+      type: object
+      additionalProperties: false
+      required: [minYear, maxYear, zMin, zMax, majorTickYears]
+      properties:
+        minYear:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        maxYear:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        zMin:
+          type: number
+        zMax:
+          type: number
+        majorTickYears:
+          type: integer
+          minimum: 1
+          maximum: 1000
+
     LodBand:
       type: object
       additionalProperties: false
@@ -1851,6 +1875,7 @@ components:
         - canonicalCamera
         - cameraConstraints
         - strata
+        - timeScale
         - lodBands
         - regions
         - nodes
@@ -1873,6 +1898,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/LayoutStratum'
+        timeScale:
+          oneOf:
+            - $ref: '#/components/schemas/TimeScale'
+            - type: 'null'
         lodBands:
           type: array
           minItems: 3
@@ -2073,7 +2102,7 @@ components:
     SearchMatch:
       type: object
       additionalProperties: false
-      required: [kind, field, highlightRanges]
+      required: [kind, field, displayText, highlightRanges]
       properties:
         kind:
           type: string
@@ -2081,8 +2110,14 @@ components:
         field:
           type: string
           enum: [canonicalName, displayName, alias, abbreviation, pinyin, summary]
+        displayText:
+          type: string
+          minLength: 1
+          maxLength: 320
+          description: The entity-owned text containing every highlight range; never the query.
         highlightRanges:
           type: array
+          description: Half-open Unicode code-point offsets into displayText.
           maxItems: 8
           items:
             type: object
@@ -2109,7 +2144,7 @@ components:
     SearchResponse:
       type: object
       additionalProperties: false
-      required: [meta, items, nextCursor, totalIsExact]
+      required: [meta, items, nextCursor, total, totalIsExact]
       properties:
         meta:
           $ref: '#/components/schemas/ApiMeta'
@@ -2121,6 +2156,9 @@ components:
         nextCursor:
           type: [string, 'null']
           maxLength: 512
+        total:
+          type: [integer, 'null']
+          minimum: 0
         totalIsExact:
           type: boolean
           description: False when the backend intentionally avoids an expensive exact count.
@@ -2530,6 +2568,7 @@ components:
         - explanation
         - entityId
         - relationFromPreviousId
+        - statementIds
         - focus
       properties:
         id:
@@ -2552,6 +2591,12 @@ components:
           oneOf:
             - $ref: '#/components/schemas/RelationId'
             - type: 'null'
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
         focus:
           $ref: '#/components/schemas/GuidedPathFocus'
 
@@ -2842,6 +2887,7 @@ components:
           locale: zh-CN
         items: []
         nextCursor: null
+        total: 0
         totalIsExact: true
 
     EntityReact:
@@ -2905,4 +2951,4 @@ components:
               label: 官方网站
               url: https://react.dev/
               sourceId: source.react-official-learn
-          issueReportUrl: https://github.com/seekstar/techmap-data/issues/new?entity=tech.react&dataVersion=1.0.0-alpha.1
+          issueReportUrl: https://github.com/seekstarAI/techmap-data/issues/new?entity=tech.react&dataVersion=1.0.0-alpha.1
