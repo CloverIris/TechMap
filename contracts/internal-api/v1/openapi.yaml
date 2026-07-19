@@ -1,0 +1,2908 @@
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+info:
+  title: SeekStar TechMap Internal Frontend API
+  version: 1.0.0
+  summary: Frozen Alpha contract between the TechMap frontend and backend.
+  description: |
+    This is the machine-readable source of truth for data exchanged between the
+    SeekStar TechMap Alpha frontend and backend. It is an internal, read-oriented
+    product API, not the future public TechMap API. Database tables, editorial YAML,
+    and renderer-specific state are intentionally excluded.
+
+    Contract rules and operational semantics are documented in
+    docs/API_CONTRACT.zh-CN.md. This artifact is immutable once released. Changes
+    require a new contract version and compatibility review.
+  license:
+    name: Proprietary product contract; dataset payloads are CC BY 4.0
+    identifier: LicenseRef-SeekStar-Internal-Contract
+
+x-contract-id: seekstar.techmap.internal-api
+x-contract-status: frozen
+x-contract-major: 1
+x-public-api: false
+
+servers:
+  - url: https://techmap.seekstar.ai/api/internal/v1
+    description: Production, same-origin API
+  - url: http://localhost:3001/api/internal/v1
+    description: Local backend development
+
+security: []
+
+tags:
+  - name: Bootstrap
+    description: Current immutable release discovery and frontend capabilities.
+  - name: Layout
+    description: Deterministic render projections, overlays, expansions, and local edges.
+  - name: Knowledge
+    description: Search, entity details, sources, slug resolution, and guided paths.
+  - name: Telemetry
+    description: Anonymous allow-listed aggregate product events.
+
+paths:
+  /bootstrap:
+    get:
+      tags: [Bootstrap]
+      operationId: getBootstrap
+      summary: Discover the current release and Alpha capabilities
+      description: |
+        This is the only mutable read resource. The frontend calls it first, then pins
+        every subsequent request to the returned dataVersion and layoutVersion.
+      parameters:
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Current release manifest and product capabilities.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/BootstrapCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+            X-TechMap-Layout-Version:
+              $ref: '#/components/headers/LayoutVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BootstrapResponse'
+              examples:
+                zhCN:
+                  $ref: '#/components/examples/BootstrapZhCN'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/layouts/{layoutVersion}/{view}:
+    get:
+      tags: [Layout]
+      operationId: getLayoutSnapshot
+      summary: Fetch an immutable base layout snapshot
+      description: |
+        Returns default-visible entities, regions, strata, and curated landmark edges.
+        Organization, person, paper, and lifecycle overlays are fetched separately.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/LayoutVersionPath'
+        - $ref: '#/components/parameters/ViewPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Immutable layout projection for the requested view.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+            X-TechMap-Layout-Version:
+              $ref: '#/components/headers/LayoutVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutSnapshotResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/layouts/{layoutVersion}/{view}/overlays/{overlay}:
+    get:
+      tags: [Layout]
+      operationId: getLayoutOverlay
+      summary: Fetch an additive layout overlay
+      description: |
+        Overlay fragments never move or resize base snapshot nodes and regions. Apply
+        them after the base snapshot and any active semantic-era expansion.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/LayoutVersionPath'
+        - $ref: '#/components/parameters/ViewPath'
+        - $ref: '#/components/parameters/OverlayPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Additive nodes, edges, and annotations for one overlay.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+            X-TechMap-Layout-Version:
+              $ref: '#/components/headers/LayoutVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutOverlayResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/layouts/{layoutVersion}/{view}/expansions/{entityId}:
+    get:
+      tags: [Layout]
+      operationId: getLayoutExpansion
+      summary: Fetch a deterministic semantic-era expansion
+      description: |
+        Returns a reversible fragment relative to one base snapshot. Collapsing the
+        entity discards this fragment and restores the unchanged base snapshot.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/LayoutVersionPath'
+        - $ref: '#/components/parameters/ViewPath'
+        - $ref: '#/components/parameters/EntityIdPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Layout fragment for the requested entity expansion.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+            X-TechMap-Layout-Version:
+              $ref: '#/components/headers/LayoutVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutExpansionResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/UnsupportedExpansion'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/layouts/{layoutVersion}/{view}/neighborhoods/{entityId}:
+    get:
+      tags: [Layout]
+      operationId: getLayoutNeighborhood
+      summary: Fetch the focused one-hop map neighborhood
+      description: |
+        This endpoint is intentionally limited to one hop. It returns positioned nodes
+        and routed edges for map focus; semantic relation lists come from entity detail.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/LayoutVersionPath'
+        - $ref: '#/components/parameters/ViewPath'
+        - $ref: '#/components/parameters/EntityIdPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/RelationTypesQuery'
+        - $ref: '#/components/parameters/DirectionQuery'
+        - $ref: '#/components/parameters/NeighborhoodLimit'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: A deterministic, possibly truncated one-hop neighborhood.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+            X-TechMap-Layout-Version:
+              $ref: '#/components/headers/LayoutVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LayoutNeighborhoodResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/search:
+    post:
+      tags: [Knowledge]
+      operationId: searchEntities
+      summary: Search the pinned data release
+      description: |
+        Search uses POST so query text never appears in URLs or ordinary access logs.
+        The operation is safe and idempotent, but responses are not stored by shared
+        caches. The response never echoes the query.
+      x-idempotent: true
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+            examples:
+              react:
+                value:
+                  query: react
+                  locale: zh-CN
+                  entityTypes: [library, framework]
+                  rootDomainIds: [domain.application-platforms-frameworks]
+                  limit: 20
+                  cursor: null
+      responses:
+        '200':
+          description: Ranked search results for the exact request and release.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStoreCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+              examples:
+                react:
+                  $ref: '#/components/examples/SearchReact'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/entities/{entityId}:
+    get:
+      tags: [Knowledge]
+      operationId: getEntityDetail
+      summary: Fetch a complete entity detail bundle
+      description: |
+        The bundle includes localized content, semantic relations, events, statements,
+        and source summaries so the frontend does not need N+1 graph requests.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/EntityIdPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Entity detail and evidence bundle.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntityDetailResponse'
+              examples:
+                react:
+                  $ref: '#/components/examples/EntityReact'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/sources/{sourceId}:
+    get:
+      tags: [Knowledge]
+      operationId: getSource
+      summary: Fetch one normalized source record
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/SourceIdPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Source metadata and provenance.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/resolve/{resourceKind}/{slug}:
+    get:
+      tags: [Knowledge]
+      operationId: resolveEntitySlug
+      summary: Resolve a typed page slug to a permanent entity ID
+      description: |
+        Used by indexable detail routes. The frontend performs the HTTP redirect when
+        redirectRequired is true; the API itself always returns a resolution document.
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/ResourceKindPath'
+        - $ref: '#/components/parameters/SlugPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Canonical, migrated, merged, or tombstoned slug resolution.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SlugResolutionResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/guided-paths:
+    get:
+      tags: [Knowledge]
+      operationId: listGuidedPaths
+      summary: List Guided Paths in stable editorial order
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Guided Path summaries.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuidedPathListResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /releases/{dataVersion}/guided-paths/{pathId}:
+    get:
+      tags: [Knowledge]
+      operationId: getGuidedPath
+      summary: Fetch one complete Guided Path
+      parameters:
+        - $ref: '#/components/parameters/DataVersionPath'
+        - $ref: '#/components/parameters/PathIdPath'
+        - $ref: '#/components/parameters/Locale'
+        - $ref: '#/components/parameters/IfNoneMatch'
+      responses:
+        '200':
+          description: Complete ordered path with map focus instructions.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/ImmutableCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+            X-TechMap-Data-Version:
+              $ref: '#/components/headers/DataVersion'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GuidedPathResponse'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /telemetry/events:
+    post:
+      tags: [Telemetry]
+      operationId: ingestTelemetryEvents
+      summary: Ingest an anonymous allow-listed event batch
+      description: |
+        The body cannot carry search text, entity IDs, user IDs, session IDs, arbitrary
+        URLs, or arbitrary property maps. The backend aggregates events and discards raw
+        records within 24 hours.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryBatch'
+      responses:
+        '202':
+          description: Events accepted for anonymous aggregation.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/NoStoreCacheControl'
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+            X-TechMap-Contract-Version:
+              $ref: '#/components/headers/ContractVersion'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  parameters:
+    Locale:
+      name: locale
+      in: query
+      required: true
+      description: Explicit response locale. It is part of the cache key.
+      schema:
+        $ref: '#/components/schemas/Locale'
+
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Previously returned strong ETag.
+      schema:
+        type: string
+        maxLength: 160
+
+    DataVersionPath:
+      name: dataVersion
+      in: path
+      required: true
+      description: Exact immutable TechMap dataset semantic version.
+      schema:
+        $ref: '#/components/schemas/SemanticVersion'
+
+    LayoutVersionPath:
+      name: layoutVersion
+      in: path
+      required: true
+      description: Exact immutable layout semantic version.
+      schema:
+        $ref: '#/components/schemas/SemanticVersion'
+
+    ViewPath:
+      name: view
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/MapView'
+
+    OverlayPath:
+      name: overlay
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/OverlayType'
+
+    EntityIdPath:
+      name: entityId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/EntityId'
+
+    SourceIdPath:
+      name: sourceId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/SourceId'
+
+    PathIdPath:
+      name: pathId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/GuidedPathId'
+
+    ResourceKindPath:
+      name: resourceKind
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ResourceKind'
+
+    SlugPath:
+      name: slug
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Slug'
+
+    RelationTypesQuery:
+      name: relationTypes
+      in: query
+      required: false
+      description: Comma-separated core or extension relation types. Omit for all.
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 18
+        uniqueItems: true
+        items:
+          $ref: '#/components/schemas/RelationType'
+
+    DirectionQuery:
+      name: direction
+      in: query
+      required: false
+      description: Direction relative to the focused entity.
+      schema:
+        type: string
+        enum: [incoming, outgoing, both]
+        default: both
+
+    NeighborhoodLimit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of relation edges after deterministic ranking.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 80
+        default: 40
+
+  headers:
+    ETag:
+      description: Strong validator for the exact representation, including locale.
+      schema:
+        type: string
+        example: '"sha256-6c937f..."'
+
+    BootstrapCacheControl:
+      description: Bootstrap is briefly cacheable and revalidated often.
+      schema:
+        type: string
+        example: public, max-age=60, stale-while-revalidate=300
+
+    ImmutableCacheControl:
+      description: Versioned release resources are immutable.
+      schema:
+        type: string
+        example: public, max-age=31536000, immutable
+
+    NoStoreCacheControl:
+      description: Sensitive or write-like operations are never stored.
+      schema:
+        type: string
+        example: no-store
+
+    RequestId:
+      description: Opaque request correlation ID. It contains no user information.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 80
+
+    ContractVersion:
+      description: Exact internal contract artifact version used by the response.
+      schema:
+        type: string
+        const: 1.0.0
+
+    DataVersion:
+      description: Exact dataset semantic version used by the response.
+      schema:
+        $ref: '#/components/schemas/SemanticVersion'
+
+    LayoutVersion:
+      description: Exact layout semantic version used by the response.
+      schema:
+        $ref: '#/components/schemas/SemanticVersion'
+
+    RetryAfter:
+      description: Seconds before retrying a throttled or unavailable operation.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    NotModified:
+      description: The representation matches If-None-Match; no body is returned.
+      headers:
+        ETag:
+          $ref: '#/components/headers/ETag'
+        Cache-Control:
+          $ref: '#/components/headers/ImmutableCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+
+    BadRequest:
+      description: The request violates the frozen contract.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    NotFound:
+      description: The release exists, but the requested resource has never existed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    Gone:
+      description: The version or resource is known but is no longer retained or available.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    UnsupportedExpansion:
+      description: The entity exists but has no expansion for this layout and view.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    PayloadTooLarge:
+      description: The request exceeds the documented byte, query, or batch limit.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    RateLimited:
+      description: Per-origin abuse protection has throttled the request.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    InternalError:
+      description: An unexpected server error. Internal details are never exposed.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+    ServiceUnavailable:
+      description: The API cannot serve a coherent release at this time.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/NoStoreCacheControl'
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-Request-Id:
+          $ref: '#/components/headers/RequestId'
+        X-TechMap-Contract-Version:
+          $ref: '#/components/headers/ContractVersion'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+  schemas:
+    Locale:
+      type: string
+      enum: [zh-CN, en]
+
+    SemanticVersion:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+      example: 1.0.0
+
+    ContentHash:
+      type: string
+      pattern: '^sha256:[a-f0-9]{64}$'
+      example: sha256:6c937f82d9155bbfa58fd2b0c9bb8e8e0c7352d9a638e1bf5438b25c9bf2a12e
+
+    EntityId:
+      type: string
+      pattern: '^[a-z][a-z0-9]*(?:\.[a-z0-9][a-z0-9-]*)+$'
+      example: tech.react
+
+    RelationId:
+      allOf:
+        - $ref: '#/components/schemas/EntityId'
+      example: relation.nextjs-built-on-react
+
+    EventId:
+      allOf:
+        - $ref: '#/components/schemas/EntityId'
+      example: event.react-first-public-release
+
+    StatementId:
+      allOf:
+        - $ref: '#/components/schemas/EntityId'
+      example: statement.react-definition
+
+    SourceId:
+      allOf:
+        - $ref: '#/components/schemas/EntityId'
+      example: source.react-official-learn
+
+    GuidedPathId:
+      allOf:
+        - $ref: '#/components/schemas/EntityId'
+      example: path.web-product
+
+    Slug:
+      type: string
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      minLength: 1
+      maxLength: 100
+      example: react
+
+    MapView:
+      type: string
+      enum: [atlas, stack, time]
+
+    OverlayType:
+      type: string
+      enum: [organizations, people, papers, lifecycle]
+
+    ResourceKind:
+      type: string
+      description: |
+        Route family. domain maps to Entity.type=domain; org maps to organization;
+        person maps to person; paper maps to paper; all remaining entity types map to tech.
+      enum: [tech, domain, org, person, paper]
+
+    EntityType:
+      type: string
+      enum:
+        - domain
+        - concept
+        - algorithm
+        - standard
+        - hardware
+        - architecture
+        - system
+        - language
+        - runtime
+        - protocol
+        - library
+        - framework
+        - database
+        - tool
+        - platform
+        - service
+        - product
+        - organization
+        - person
+        - paper
+        - era_version
+
+    RootDomainId:
+      type: string
+      enum:
+        - domain.theory-algorithms
+        - domain.hardware-architecture
+        - domain.os-system-software
+        - domain.languages-runtimes
+        - domain.networks-distributed
+        - domain.data-storage
+        - domain.graphics-media-hci
+        - domain.application-platforms-frameworks
+        - domain.software-engineering-tools
+        - domain.cloud-infrastructure-operations
+        - domain.security-privacy-identity
+        - domain.ai-intelligent-systems
+
+    CoreRelationType:
+      type: string
+      enum:
+        - is_a
+        - member_of
+        - built_on
+        - runs_on
+        - compiles_to
+        - implements
+        - targets
+        - integrates_with
+        - complements
+        - alternative_to
+        - successor_to
+        - inspired_by
+        - maintained_by
+        - created_by
+        - used_for
+        - introduced_in
+        - authored_by
+        - published_by
+
+    ExtensionRelationType:
+      type: string
+      pattern: '^ext\.[a-z][a-z0-9-]*\.v[1-9][0-9]*\.[a-z][a-z0-9_]*$'
+      example: ext.ml.v1.trained_with
+
+    RelationType:
+      oneOf:
+        - $ref: '#/components/schemas/CoreRelationType'
+        - $ref: '#/components/schemas/ExtensionRelationType'
+
+    EventType:
+      type: string
+      enum:
+        - announced
+        - first_public_release
+        - stable_release
+        - major_release
+        - renamed
+        - ownership_changed
+        - deprecated
+        - archived
+        - end_of_support
+
+    DatePrecision:
+      type: string
+      enum: [day, month, year, circa, range, unknown]
+
+    StatementStatus:
+      type: string
+      enum: [candidate, accepted, disputed, retracted]
+
+    LifecycleStatus:
+      type: string
+      enum: [pre_release, active, maintenance, deprecated, archived, end_of_support, unknown]
+
+    ReviewStatus:
+      type: string
+      enum: [current, due, overdue, event_triggered]
+
+    SourceType:
+      type: string
+      enum:
+        - official_documentation
+        - official_repository
+        - release_note
+        - standard
+        - paper
+        - organization_announcement
+        - author_record
+        - interview
+        - institutional_archive
+        - secondary_source
+
+    ApiMeta:
+      type: object
+      additionalProperties: false
+      required: [requestId, contractVersion, dataVersion, dataHash, locale]
+      properties:
+        requestId:
+          type: string
+          minLength: 8
+          maxLength: 80
+        contractVersion:
+          type: string
+          const: 1.0.0
+        dataVersion:
+          $ref: '#/components/schemas/SemanticVersion'
+        dataHash:
+          $ref: '#/components/schemas/ContentHash'
+        layoutVersion:
+          type: [string, 'null']
+          pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+        locale:
+          $ref: '#/components/schemas/Locale'
+
+    LicenseInfo:
+      type: object
+      additionalProperties: false
+      required: [spdxId, name, attributionUrl]
+      properties:
+        spdxId:
+          type: string
+          const: CC-BY-4.0
+        name:
+          type: string
+          const: Creative Commons Attribution 4.0 International
+        attributionUrl:
+          type: string
+          format: uri
+
+    ReleaseManifest:
+      type: object
+      additionalProperties: false
+      required:
+        - dataVersion
+        - dataHash
+        - dataSchemaVersion
+        - layoutVersion
+        - publishedAt
+        - reviewedAt
+        - license
+      properties:
+        dataVersion:
+          $ref: '#/components/schemas/SemanticVersion'
+        dataHash:
+          $ref: '#/components/schemas/ContentHash'
+        dataSchemaVersion:
+          $ref: '#/components/schemas/SemanticVersion'
+        layoutVersion:
+          $ref: '#/components/schemas/SemanticVersion'
+        publishedAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: string
+          format: date-time
+        license:
+          $ref: '#/components/schemas/LicenseInfo'
+
+    ProductCapabilities:
+      type: object
+      additionalProperties: false
+      required:
+        - defaultLocale
+        - supportedLocales
+        - defaultView
+        - views
+        - overlays
+        - guidedPathIds
+        - basicFallback
+      properties:
+        defaultLocale:
+          $ref: '#/components/schemas/Locale'
+        supportedLocales:
+          type: array
+          minItems: 2
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Locale'
+        defaultView:
+          type: string
+          const: atlas
+        views:
+          type: array
+          minItems: 3
+          maxItems: 3
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/MapView'
+        overlays:
+          type: array
+          minItems: 4
+          maxItems: 4
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OverlayType'
+        guidedPathIds:
+          type: array
+          minItems: 3
+          items:
+            $ref: '#/components/schemas/GuidedPathId'
+        basicFallback:
+          type: boolean
+          const: true
+
+    ApiLimits:
+      type: object
+      additionalProperties: false
+      required:
+        - searchQueryCharacters
+        - searchPageSize
+        - neighborhoodEdges
+        - neighborhoodDepth
+        - telemetryBatchSize
+      properties:
+        searchQueryCharacters:
+          type: integer
+          const: 120
+        searchPageSize:
+          type: integer
+          const: 50
+        neighborhoodEdges:
+          type: integer
+          const: 80
+        neighborhoodDepth:
+          type: integer
+          const: 1
+        telemetryBatchSize:
+          type: integer
+          const: 20
+
+    RootDomainSummary:
+      type: object
+      additionalProperties: false
+      required: [id, canonicalName, displayName, shortLabel, colorToken, sortOrder]
+      properties:
+        id:
+          $ref: '#/components/schemas/RootDomainId'
+        canonicalName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        shortLabel:
+          type: string
+          minLength: 1
+          maxLength: 40
+        colorToken:
+          type: string
+          pattern: '^domain\.[a-z0-9-]+$'
+        sortOrder:
+          type: integer
+          minimum: 1
+          maximum: 12
+
+    BootstrapResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, release, capabilities, limits, rootDomains]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        release:
+          $ref: '#/components/schemas/ReleaseManifest'
+        capabilities:
+          $ref: '#/components/schemas/ProductCapabilities'
+        limits:
+          $ref: '#/components/schemas/ApiLimits'
+        rootDomains:
+          type: array
+          minItems: 12
+          maxItems: 12
+          items:
+            $ref: '#/components/schemas/RootDomainSummary'
+
+    DateParts:
+      type: object
+      additionalProperties: false
+      required: [year]
+      properties:
+        year:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        day:
+          type: integer
+          minimum: 1
+          maximum: 31
+
+    TemporalValue:
+      type: object
+      additionalProperties: false
+      required: [precision, display, start, end]
+      properties:
+        precision:
+          $ref: '#/components/schemas/DatePrecision'
+        display:
+          type: string
+          minLength: 1
+          maxLength: 120
+        start:
+          oneOf:
+            - $ref: '#/components/schemas/DateParts'
+            - type: 'null'
+        end:
+          oneOf:
+            - $ref: '#/components/schemas/DateParts'
+            - type: 'null'
+
+    Alias:
+      type: object
+      additionalProperties: false
+      required: [value, locale, kind]
+      properties:
+        value:
+          type: string
+          minLength: 1
+          maxLength: 160
+        locale:
+          oneOf:
+            - $ref: '#/components/schemas/Locale'
+            - type: 'null'
+        kind:
+          type: string
+          enum: [official, historical, abbreviation, translation, search]
+
+    VisualIdentity:
+      type: object
+      additionalProperties: false
+      required: [mode, key, assetUrl, alt, sourceId]
+      properties:
+        mode:
+          type: string
+          enum: [text, generic_icon, logo]
+        key:
+          type: string
+          minLength: 1
+          maxLength: 80
+        assetUrl:
+          type: [string, 'null']
+          format: uri-reference
+        alt:
+          type: string
+          maxLength: 160
+        sourceId:
+          oneOf:
+            - $ref: '#/components/schemas/SourceId'
+            - type: 'null'
+
+    LandmarkReason:
+      type: object
+      additionalProperties: false
+      required: [code, explanation, statementIds]
+      properties:
+        code:
+          type: string
+          enum:
+            - foundational_dependency
+            - cross_domain_reach
+            - historical_turning_point
+            - regional_structure
+            - ecosystem_context
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 240
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    LandmarkInfo:
+      type: object
+      additionalProperties: false
+      required: [tier, reasons]
+      properties:
+        tier:
+          type: integer
+          enum: [1, 2, 3]
+        reasons:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/LandmarkReason'
+
+    LifecycleInfo:
+      type: object
+      additionalProperties: false
+      required: [status, displayLabel, statementIds]
+      properties:
+        status:
+          $ref: '#/components/schemas/LifecycleStatus'
+        displayLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        statementIds:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    ReviewInfo:
+      type: object
+      additionalProperties: false
+      required: [status, reviewedAt, reviewDueAt]
+      properties:
+        status:
+          $ref: '#/components/schemas/ReviewStatus'
+        reviewedAt:
+          type: string
+          format: date-time
+        reviewDueAt:
+          type: [string, 'null']
+          format: date-time
+
+    EntityReference:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - entityType
+        - resourceKind
+        - canonicalName
+        - displayName
+        - slug
+        - canonicalPath
+        - primaryRootDomainId
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+        resourceKind:
+          $ref: '#/components/schemas/ResourceKind'
+        canonicalName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        slug:
+          $ref: '#/components/schemas/Slug'
+        canonicalPath:
+          type: string
+          pattern: '^/(zh|en)/(tech|domain|org|person|paper)/[a-z0-9]+(?:-[a-z0-9]+)*$'
+        primaryRootDomainId:
+          oneOf:
+            - $ref: '#/components/schemas/RootDomainId'
+            - type: 'null'
+
+    EntityMapSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - entityType
+        - resourceKind
+        - canonicalName
+        - displayName
+        - slug
+        - canonicalPath
+        - primaryRootDomainId
+        - summary
+        - primaryContainerId
+        - landmark
+        - visualIdentity
+        - firstPublicAt
+      properties:
+        id:
+          $ref: '#/components/schemas/EntityId'
+        entityType:
+          $ref: '#/components/schemas/EntityType'
+        resourceKind:
+          $ref: '#/components/schemas/ResourceKind'
+        canonicalName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 160
+        slug:
+          $ref: '#/components/schemas/Slug'
+        canonicalPath:
+          type: string
+          pattern: '^/(zh|en)/(tech|domain|org|person|paper)/[a-z0-9]+(?:-[a-z0-9]+)*$'
+        primaryRootDomainId:
+          oneOf:
+            - $ref: '#/components/schemas/RootDomainId'
+            - type: 'null'
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 320
+        primaryContainerId:
+          oneOf:
+            - $ref: '#/components/schemas/EntityId'
+            - type: 'null'
+        landmark:
+          oneOf:
+            - $ref: '#/components/schemas/LandmarkInfo'
+            - type: 'null'
+        visualIdentity:
+          $ref: '#/components/schemas/VisualIdentity'
+        firstPublicAt:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+
+    Vector3:
+      type: object
+      additionalProperties: false
+      required: [x, y, z]
+      properties:
+        x:
+          type: number
+        y:
+          type: number
+        z:
+          type: number
+
+    Size3:
+      type: object
+      additionalProperties: false
+      required: [width, depth, height]
+      properties:
+        width:
+          type: number
+          exclusiveMinimum: 0
+        depth:
+          type: number
+          exclusiveMinimum: 0
+        height:
+          type: number
+          minimum: 0
+
+    Bounds3:
+      type: object
+      additionalProperties: false
+      required: [min, max]
+      properties:
+        min:
+          $ref: '#/components/schemas/Vector3'
+        max:
+          $ref: '#/components/schemas/Vector3'
+
+    CoordinateSystem:
+      type: object
+      additionalProperties: false
+      required: [handedness, horizontalAxes, verticalAxis, unit]
+      properties:
+        handedness:
+          type: string
+          const: right
+        horizontalAxes:
+          type: array
+          prefixItems:
+            - type: string
+              const: x
+            - type: string
+              const: y
+          minItems: 2
+          maxItems: 2
+        verticalAxis:
+          type: string
+          const: z
+        unit:
+          type: string
+          const: layout_unit
+
+    CanonicalCamera:
+      type: object
+      additionalProperties: false
+      required:
+        - projection
+        - target
+        - azimuthDegrees
+        - elevationDegrees
+        - distance
+        - verticalSpan
+      properties:
+        projection:
+          type: string
+          enum: [perspective, orthographic]
+        target:
+          $ref: '#/components/schemas/Vector3'
+        azimuthDegrees:
+          type: number
+          minimum: -360
+          maximum: 360
+        elevationDegrees:
+          type: number
+          minimum: -90
+          maximum: 90
+        distance:
+          type: [number, 'null']
+          exclusiveMinimum: 0
+        verticalSpan:
+          type: [number, 'null']
+          exclusiveMinimum: 0
+
+    CameraConstraints:
+      type: object
+      additionalProperties: false
+      required:
+        - allowPan
+        - allowRotate
+        - minElevationDegrees
+        - maxElevationDegrees
+        - minDistance
+        - maxDistance
+      properties:
+        allowPan:
+          type: boolean
+        allowRotate:
+          type: boolean
+        minElevationDegrees:
+          type: number
+          minimum: -90
+          maximum: 90
+        maxElevationDegrees:
+          type: number
+          minimum: -90
+          maximum: 90
+        minDistance:
+          type: number
+          exclusiveMinimum: 0
+        maxDistance:
+          type: number
+          exclusiveMinimum: 0
+
+    LayoutStratum:
+      type: object
+      additionalProperties: false
+      required: [id, displayName, zMin, zMax, sortOrder]
+      properties:
+        id:
+          type: string
+          pattern: '^stratum\.[a-z0-9-]+$'
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 80
+        zMin:
+          type: number
+        zMax:
+          type: number
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    LodBand:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - minSemanticZoom
+        - maxSemanticZoom
+        - visibleLandmarkTiers
+        - showRegionLabels
+        - showNodeLabels
+      properties:
+        id:
+          type: string
+          enum: [overview, regional, local]
+        minSemanticZoom:
+          type: number
+          minimum: 0
+          maximum: 1
+        maxSemanticZoom:
+          type: number
+          minimum: 0
+          maximum: 1
+        visibleLandmarkTiers:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            enum: [1, 2, 3]
+        showRegionLabels:
+          type: boolean
+        showNodeLabels:
+          type: boolean
+
+    LayoutRegion:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - containerEntityId
+        - rootDomainId
+        - parentRegionId
+        - displayName
+        - bounds
+        - titleBounds
+        - cornerRadius
+        - colorToken
+        - sortOrder
+      properties:
+        id:
+          type: string
+          pattern: '^region\.[a-z0-9][a-z0-9.-]*$'
+        containerEntityId:
+          $ref: '#/components/schemas/EntityId'
+        rootDomainId:
+          $ref: '#/components/schemas/RootDomainId'
+        parentRegionId:
+          type: [string, 'null']
+          pattern: '^region\.[a-z0-9][a-z0-9.-]*$'
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        bounds:
+          $ref: '#/components/schemas/Bounds3'
+        titleBounds:
+          $ref: '#/components/schemas/Bounds3'
+        cornerRadius:
+          type: number
+          minimum: 0
+        colorToken:
+          type: string
+          pattern: '^domain\.[a-z0-9-]+$'
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    LayerSpan:
+      type: object
+      additionalProperties: false
+      required: [fromStratumId, toStratumId]
+      properties:
+        fromStratumId:
+          type: string
+          pattern: '^stratum\.[a-z0-9-]+$'
+        toStratumId:
+          type: string
+          pattern: '^stratum\.[a-z0-9-]+$'
+
+    MapNode:
+      type: object
+      additionalProperties: false
+      required:
+        - entity
+        - position
+        - footprint
+        - containerRegionId
+        - labelPlacement
+        - labelMaxWidth
+        - minSemanticZoom
+        - layerSpan
+        - timeAnchor
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityMapSummary'
+        position:
+          $ref: '#/components/schemas/Vector3'
+        footprint:
+          $ref: '#/components/schemas/Size3'
+        containerRegionId:
+          type: [string, 'null']
+          pattern: '^region\.[a-z0-9][a-z0-9.-]*$'
+        labelPlacement:
+          type: string
+          enum: [center, north, east, south, west, above]
+        labelMaxWidth:
+          type: number
+          exclusiveMinimum: 0
+        minSemanticZoom:
+          type: number
+          minimum: 0
+          maximum: 1
+        layerSpan:
+          oneOf:
+            - $ref: '#/components/schemas/LayerSpan'
+            - type: 'null'
+        timeAnchor:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+
+    MapEdge:
+      type: object
+      additionalProperties: false
+      required:
+        - relationId
+        - relationType
+        - sourceEntityId
+        - targetEntityId
+        - directed
+        - displayLabel
+        - controlPoints
+        - minSemanticZoom
+        - statementIds
+      properties:
+        relationId:
+          $ref: '#/components/schemas/RelationId'
+        relationType:
+          $ref: '#/components/schemas/RelationType'
+        sourceEntityId:
+          $ref: '#/components/schemas/EntityId'
+        targetEntityId:
+          $ref: '#/components/schemas/EntityId'
+        directed:
+          type: boolean
+        displayLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        controlPoints:
+          type: array
+          minItems: 2
+          maxItems: 16
+          items:
+            $ref: '#/components/schemas/Vector3'
+        minSemanticZoom:
+          type: number
+          minimum: 0
+          maximum: 1
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    LayoutSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - view
+        - coordinateSystem
+        - worldBounds
+        - canonicalCamera
+        - cameraConstraints
+        - strata
+        - lodBands
+        - regions
+        - nodes
+        - landmarkEdges
+      properties:
+        id:
+          type: string
+          pattern: '^layout\.[a-z0-9][a-z0-9.-]*$'
+        view:
+          $ref: '#/components/schemas/MapView'
+        coordinateSystem:
+          $ref: '#/components/schemas/CoordinateSystem'
+        worldBounds:
+          $ref: '#/components/schemas/Bounds3'
+        canonicalCamera:
+          $ref: '#/components/schemas/CanonicalCamera'
+        cameraConstraints:
+          $ref: '#/components/schemas/CameraConstraints'
+        strata:
+          type: array
+          items:
+            $ref: '#/components/schemas/LayoutStratum'
+        lodBands:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/LodBand'
+        regions:
+          type: array
+          minItems: 12
+          items:
+            $ref: '#/components/schemas/LayoutRegion'
+        nodes:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MapNode'
+        landmarkEdges:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapEdge'
+
+    LayoutSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, snapshot]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        snapshot:
+          $ref: '#/components/schemas/LayoutSnapshot'
+
+    OverlayAnnotation:
+      type: object
+      additionalProperties: false
+      required: [entityId, kind, displayLabel, lifecycleStatus, statementIds]
+      properties:
+        entityId:
+          $ref: '#/components/schemas/EntityId'
+        kind:
+          type: string
+          const: lifecycle
+        displayLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        lifecycleStatus:
+          $ref: '#/components/schemas/LifecycleStatus'
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    LayoutOverlay:
+      type: object
+      additionalProperties: false
+      required: [baseSnapshotId, overlay, nodes, edges, annotations]
+      properties:
+        baseSnapshotId:
+          type: string
+          pattern: '^layout\.[a-z0-9][a-z0-9.-]*$'
+        overlay:
+          $ref: '#/components/schemas/OverlayType'
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapEdge'
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/OverlayAnnotation'
+
+    LayoutOverlayResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, overlay]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        overlay:
+          $ref: '#/components/schemas/LayoutOverlay'
+
+    LayoutExpansion:
+      type: object
+      additionalProperties: false
+      required:
+        - baseSnapshotId
+        - targetEntityId
+        - expandedNodes
+        - expandedEdges
+        - regionOverrides
+        - focusBounds
+      properties:
+        baseSnapshotId:
+          type: string
+          pattern: '^layout\.[a-z0-9][a-z0-9.-]*$'
+        targetEntityId:
+          $ref: '#/components/schemas/EntityId'
+        expandedNodes:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MapNode'
+        expandedEdges:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapEdge'
+        regionOverrides:
+          type: array
+          description: Complete replacements for base regions whose envelope changes.
+          items:
+            $ref: '#/components/schemas/LayoutRegion'
+        focusBounds:
+          $ref: '#/components/schemas/Bounds3'
+
+    LayoutExpansionResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, expansion]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        expansion:
+          $ref: '#/components/schemas/LayoutExpansion'
+
+    LayoutNeighborhood:
+      type: object
+      additionalProperties: false
+      required: [baseSnapshotId, focusEntityId, nodes, edges, totalAvailable, truncated]
+      properties:
+        baseSnapshotId:
+          type: string
+          pattern: '^layout\.[a-z0-9][a-z0-9.-]*$'
+        focusEntityId:
+          $ref: '#/components/schemas/EntityId'
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MapNode'
+        edges:
+          type: array
+          maxItems: 80
+          items:
+            $ref: '#/components/schemas/MapEdge'
+        totalAvailable:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+
+    LayoutNeighborhoodResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, neighborhood]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        neighborhood:
+          $ref: '#/components/schemas/LayoutNeighborhood'
+
+    SearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query, locale, entityTypes, rootDomainIds, limit, cursor]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 120
+        locale:
+          $ref: '#/components/schemas/Locale'
+        entityTypes:
+          type: array
+          maxItems: 21
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EntityType'
+        rootDomainIds:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RootDomainId'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+        cursor:
+          type: [string, 'null']
+          maxLength: 512
+
+    SearchMatch:
+      type: object
+      additionalProperties: false
+      required: [kind, field, highlightRanges]
+      properties:
+        kind:
+          type: string
+          enum: [exact, canonical, alias, abbreviation, pinyin, prefix, substring, trigram]
+        field:
+          type: string
+          enum: [canonicalName, displayName, alias, abbreviation, pinyin, summary]
+        highlightRanges:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            additionalProperties: false
+            required: [start, end]
+            properties:
+              start:
+                type: integer
+                minimum: 0
+              end:
+                type: integer
+                minimum: 1
+
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [entity, match]
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityMapSummary'
+        match:
+          $ref: '#/components/schemas/SearchMatch'
+
+    SearchResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, items, nextCursor, totalIsExact]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        nextCursor:
+          type: [string, 'null']
+          maxLength: 512
+        totalIsExact:
+          type: boolean
+          description: False when the backend intentionally avoids an expensive exact count.
+
+    ValidityWindow:
+      type: object
+      additionalProperties: false
+      required: [validFrom, validTo, sourceVersion, targetVersion]
+      properties:
+        validFrom:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+        validTo:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+        sourceVersion:
+          type: [string, 'null']
+          maxLength: 120
+        targetVersion:
+          type: [string, 'null']
+          maxLength: 120
+
+    RelationView:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - relationType
+        - displayLabel
+        - source
+        - target
+        - symmetric
+        - validity
+        - statementIds
+      properties:
+        id:
+          $ref: '#/components/schemas/RelationId'
+        relationType:
+          $ref: '#/components/schemas/RelationType'
+        displayLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+        source:
+          $ref: '#/components/schemas/EntityReference'
+        target:
+          $ref: '#/components/schemas/EntityReference'
+        symmetric:
+          type: boolean
+        validity:
+          $ref: '#/components/schemas/ValidityWindow'
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    EventView:
+      type: object
+      additionalProperties: false
+      required: [id, eventType, displayLabel, occurredAt, participantIds, statementIds]
+      properties:
+        id:
+          $ref: '#/components/schemas/EventId'
+        eventType:
+          $ref: '#/components/schemas/EventType'
+        displayLabel:
+          type: string
+          minLength: 1
+          maxLength: 160
+        occurredAt:
+          $ref: '#/components/schemas/TemporalValue'
+        participantIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EntityId'
+        statementIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/StatementId'
+
+    StatementView:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - claimKind
+        - claimText
+        - status
+        - sourceIds
+        - primarySourceId
+        - reviewedAt
+        - discussionUrl
+      properties:
+        id:
+          $ref: '#/components/schemas/StatementId'
+        claimKind:
+          type: string
+          enum: [entity_field, relation, event, landmark_reason, lifecycle_status]
+        claimText:
+          type: string
+          minLength: 1
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/StatementStatus'
+        sourceIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/SourceId'
+        primarySourceId:
+          $ref: '#/components/schemas/SourceId'
+        reviewedAt:
+          type: string
+          format: date-time
+        discussionUrl:
+          type: [string, 'null']
+          format: uri
+
+    SourceView:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - sourceType
+        - title
+        - publisher
+        - url
+        - archiveUrl
+        - language
+        - publishedAt
+        - updatedAt
+        - accessedAt
+        - license
+        - contentHash
+      properties:
+        id:
+          $ref: '#/components/schemas/SourceId'
+        sourceType:
+          $ref: '#/components/schemas/SourceType'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        publisher:
+          type: string
+          minLength: 1
+          maxLength: 200
+        url:
+          type: string
+          format: uri
+        archiveUrl:
+          type: [string, 'null']
+          format: uri
+        language:
+          type: string
+          pattern: '^[a-z]{2,3}(?:-[A-Z]{2})?$'
+        publishedAt:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+        updatedAt:
+          oneOf:
+            - $ref: '#/components/schemas/TemporalValue'
+            - type: 'null'
+        accessedAt:
+          type: string
+          format: date
+        license:
+          type: [string, 'null']
+          maxLength: 160
+        contentHash:
+          oneOf:
+            - $ref: '#/components/schemas/ContentHash'
+            - type: 'null'
+
+    ExternalLink:
+      type: object
+      additionalProperties: false
+      required: [kind, label, url, sourceId]
+      properties:
+        kind:
+          type: string
+          enum: [official_site, documentation, repository, standard, paper, issue_report, discussion]
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        url:
+          type: string
+          format: uri
+        sourceId:
+          oneOf:
+            - $ref: '#/components/schemas/SourceId'
+            - type: 'null'
+
+    EntityDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - entity
+        - aliases
+        - descriptionMarkdown
+        - primaryContainer
+        - classifications
+        - lifecycle
+        - review
+        - relations
+        - events
+        - eraVersions
+        - statements
+        - sources
+        - links
+        - issueReportUrl
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityMapSummary'
+        aliases:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Alias'
+        descriptionMarkdown:
+          type: string
+          description: CommonMark without raw HTML. The frontend must sanitize rendered output.
+          maxLength: 50000
+        primaryContainer:
+          oneOf:
+            - $ref: '#/components/schemas/EntityReference'
+            - type: 'null'
+        classifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityReference'
+        lifecycle:
+          $ref: '#/components/schemas/LifecycleInfo'
+        review:
+          $ref: '#/components/schemas/ReviewInfo'
+        relations:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelationView'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventView'
+        eraVersions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityReference'
+        statements:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StatementView'
+        sources:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SourceView'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalLink'
+        issueReportUrl:
+          type: string
+          format: uri
+
+    EntityDetailResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, detail]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        detail:
+          $ref: '#/components/schemas/EntityDetail'
+
+    SourceResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, source]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        source:
+          $ref: '#/components/schemas/SourceView'
+
+    SlugResolution:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - requestedKind
+        - requestedSlug
+        - entityId
+        - canonicalKind
+        - canonicalSlug
+        - canonicalPath
+        - redirectRequired
+        - replacementEntityId
+      properties:
+        status:
+          type: string
+          enum: [canonical, redirected, merged, tombstoned]
+        requestedKind:
+          $ref: '#/components/schemas/ResourceKind'
+        requestedSlug:
+          $ref: '#/components/schemas/Slug'
+        entityId:
+          oneOf:
+            - $ref: '#/components/schemas/EntityId'
+            - type: 'null'
+        canonicalKind:
+          oneOf:
+            - $ref: '#/components/schemas/ResourceKind'
+            - type: 'null'
+        canonicalSlug:
+          type: [string, 'null']
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+        canonicalPath:
+          type: [string, 'null']
+          pattern: '^/(zh|en)/(tech|domain|org|person|paper)/[a-z0-9]+(?:-[a-z0-9]+)*$'
+        redirectRequired:
+          type: boolean
+        replacementEntityId:
+          oneOf:
+            - $ref: '#/components/schemas/EntityId'
+            - type: 'null'
+
+    SlugResolutionResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, resolution]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        resolution:
+          $ref: '#/components/schemas/SlugResolution'
+
+    GuidedPathSummary:
+      type: object
+      additionalProperties: false
+      required: [id, title, summary, stepCount, estimatedMinutes, sortOrder]
+      properties:
+        id:
+          $ref: '#/components/schemas/GuidedPathId'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 320
+        stepCount:
+          type: integer
+          minimum: 2
+        estimatedMinutes:
+          type: integer
+          minimum: 1
+          maximum: 60
+        sortOrder:
+          type: integer
+          minimum: 0
+
+    GuidedPathFocus:
+      type: object
+      additionalProperties: false
+      required: [view, mode, relationTypes, overlays, year]
+      properties:
+        view:
+          $ref: '#/components/schemas/MapView'
+        mode:
+          type: string
+          enum: [entity, neighborhood]
+        relationTypes:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/RelationType'
+        overlays:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/OverlayType'
+        year:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 9999
+
+    GuidedPathStep:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - order
+        - title
+        - explanation
+        - entityId
+        - relationFromPreviousId
+        - focus
+      properties:
+        id:
+          type: string
+          pattern: '^step\.[a-z0-9][a-z0-9.-]*$'
+        order:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        explanation:
+          type: string
+          minLength: 1
+          maxLength: 600
+        entityId:
+          $ref: '#/components/schemas/EntityId'
+        relationFromPreviousId:
+          oneOf:
+            - $ref: '#/components/schemas/RelationId'
+            - type: 'null'
+        focus:
+          $ref: '#/components/schemas/GuidedPathFocus'
+
+    GuidedPath:
+      type: object
+      additionalProperties: false
+      required: [id, title, learningQuestion, summary, estimatedMinutes, steps]
+      properties:
+        id:
+          $ref: '#/components/schemas/GuidedPathId'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        learningQuestion:
+          type: string
+          minLength: 1
+          maxLength: 240
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 500
+        estimatedMinutes:
+          type: integer
+          minimum: 1
+          maximum: 60
+        steps:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/GuidedPathStep'
+
+    GuidedPathListResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, items]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        items:
+          type: array
+          minItems: 3
+          items:
+            $ref: '#/components/schemas/GuidedPathSummary'
+
+    GuidedPathResponse:
+      type: object
+      additionalProperties: false
+      required: [meta, path]
+      properties:
+        meta:
+          $ref: '#/components/schemas/ApiMeta'
+        path:
+          $ref: '#/components/schemas/GuidedPath'
+
+    TelemetryEventType:
+      type: string
+      enum:
+        - map_interactive
+        - view_changed
+        - search_completed
+        - entity_focused
+        - relation_expanded
+        - era_expanded
+        - source_opened
+        - guided_path_started
+        - guided_path_advanced
+        - guided_path_completed
+        - render_error
+
+    RenderBackend:
+      type: string
+      enum: [webgpu, webgl2, basic]
+
+    DeviceClass:
+      type: string
+      enum: [desktop, tablet, mobile]
+
+    DurationBucket:
+      type: string
+      enum: [under_1s, 1_to_3s, 3_to_6s, 6_to_10s, over_10s, not_applicable]
+
+    CountBucket:
+      type: string
+      enum: [zero, one, two_to_five, six_to_twenty, over_twenty, not_applicable]
+
+    TelemetryEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventType
+        - occurredAt
+        - contractVersion
+        - dataVersion
+        - layoutVersion
+        - locale
+        - renderBackend
+        - deviceClass
+        - view
+        - entityType
+        - rootDomainId
+        - guidedPathId
+        - durationBucket
+        - countBucket
+        - errorKind
+      properties:
+        eventType:
+          $ref: '#/components/schemas/TelemetryEventType'
+        occurredAt:
+          type: string
+          format: date-time
+        contractVersion:
+          type: string
+          const: 1.0.0
+        dataVersion:
+          $ref: '#/components/schemas/SemanticVersion'
+        layoutVersion:
+          type: [string, 'null']
+          pattern: '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$'
+        locale:
+          $ref: '#/components/schemas/Locale'
+        renderBackend:
+          $ref: '#/components/schemas/RenderBackend'
+        deviceClass:
+          $ref: '#/components/schemas/DeviceClass'
+        view:
+          oneOf:
+            - $ref: '#/components/schemas/MapView'
+            - type: 'null'
+        entityType:
+          oneOf:
+            - $ref: '#/components/schemas/EntityType'
+            - type: 'null'
+        rootDomainId:
+          oneOf:
+            - $ref: '#/components/schemas/RootDomainId'
+            - type: 'null'
+        guidedPathId:
+          oneOf:
+            - $ref: '#/components/schemas/GuidedPathId'
+            - type: 'null'
+        durationBucket:
+          $ref: '#/components/schemas/DurationBucket'
+        countBucket:
+          $ref: '#/components/schemas/CountBucket'
+        errorKind:
+          type: [string, 'null']
+          enum:
+            - null
+            - renderer_initialization
+            - asset_load
+            - context_lost
+            - api_unavailable
+            - unknown
+
+    TelemetryBatch:
+      type: object
+      additionalProperties: false
+      required: [events]
+      properties:
+        events:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/TelemetryEvent'
+
+    InvalidParameter:
+      type: object
+      additionalProperties: false
+      required: [name, location, reason]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        location:
+          type: string
+          enum: [path, query, header, body]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 300
+
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, requestId, detail, invalidParameters]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+          minLength: 1
+          maxLength: 120
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          enum:
+            - invalid_request
+            - invalid_parameter
+            - locale_not_supported
+            - resource_not_found
+            - release_not_found
+            - release_gone
+            - layout_not_found
+            - expansion_not_supported
+            - payload_too_large
+            - rate_limited
+            - internal_error
+            - service_unavailable
+        requestId:
+          type: string
+          minLength: 8
+          maxLength: 80
+        detail:
+          type: string
+          minLength: 1
+          maxLength: 500
+        invalidParameters:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvalidParameter'
+
+  examples:
+    BootstrapZhCN:
+      summary: Current Alpha release in Chinese
+      value:
+        meta:
+          requestId: req_01J00000000000000000000000
+          contractVersion: 1.0.0
+          dataVersion: 1.0.0-alpha.1
+          dataHash: sha256:6c937f82d9155bbfa58fd2b0c9bb8e8e0c7352d9a638e1bf5438b25c9bf2a12e
+          layoutVersion: 1.0.0-alpha.1
+          locale: zh-CN
+        release:
+          dataVersion: 1.0.0-alpha.1
+          dataHash: sha256:6c937f82d9155bbfa58fd2b0c9bb8e8e0c7352d9a638e1bf5438b25c9bf2a12e
+          dataSchemaVersion: 1.0.0
+          layoutVersion: 1.0.0-alpha.1
+          publishedAt: '2026-07-19T12:00:00Z'
+          reviewedAt: '2026-07-19T10:00:00Z'
+          license:
+            spdxId: CC-BY-4.0
+            name: Creative Commons Attribution 4.0 International
+            attributionUrl: https://creativecommons.org/licenses/by/4.0/
+        capabilities:
+          defaultLocale: zh-CN
+          supportedLocales: [zh-CN, en]
+          defaultView: atlas
+          views: [atlas, stack, time]
+          overlays: [organizations, people, papers, lifecycle]
+          guidedPathIds: [path.web-product, path.ai-application, path.hardware-to-language]
+          basicFallback: true
+        limits:
+          searchQueryCharacters: 120
+          searchPageSize: 50
+          neighborhoodEdges: 80
+          neighborhoodDepth: 1
+          telemetryBatchSize: 20
+        rootDomains:
+          - { id: domain.theory-algorithms, canonicalName: Theory and Algorithms, displayName: 理论与算法, shortLabel: 理论, colorToken: domain.theory-algorithms, sortOrder: 1 }
+          - { id: domain.hardware-architecture, canonicalName: Hardware and Architecture, displayName: 硬件与体系结构, shortLabel: 硬件, colorToken: domain.hardware-architecture, sortOrder: 2 }
+          - { id: domain.os-system-software, canonicalName: Operating Systems and System Software, displayName: 操作系统与系统软件, shortLabel: 系统, colorToken: domain.os-system-software, sortOrder: 3 }
+          - { id: domain.languages-runtimes, canonicalName: Languages and Runtimes, displayName: 语言与运行时, shortLabel: 语言, colorToken: domain.languages-runtimes, sortOrder: 4 }
+          - { id: domain.networks-distributed, canonicalName: Networks and Distributed Systems, displayName: 网络与分布式系统, shortLabel: 网络, colorToken: domain.networks-distributed, sortOrder: 5 }
+          - { id: domain.data-storage, canonicalName: Data and Storage, displayName: 数据与存储, shortLabel: 数据, colorToken: domain.data-storage, sortOrder: 6 }
+          - { id: domain.graphics-media-hci, canonicalName: Graphics Media and HCI, displayName: 图形媒体与人机交互, shortLabel: 图形与交互, colorToken: domain.graphics-media-hci, sortOrder: 7 }
+          - { id: domain.application-platforms-frameworks, canonicalName: Application Platforms and Frameworks, displayName: 应用平台与框架, shortLabel: 应用框架, colorToken: domain.application-platforms-frameworks, sortOrder: 8 }
+          - { id: domain.software-engineering-tools, canonicalName: Software Engineering and Developer Tools, displayName: 软件工程与开发工具, shortLabel: 开发工具, colorToken: domain.software-engineering-tools, sortOrder: 9 }
+          - { id: domain.cloud-infrastructure-operations, canonicalName: Cloud Infrastructure and Operations, displayName: 云基础设施与运维, shortLabel: 云与运维, colorToken: domain.cloud-infrastructure-operations, sortOrder: 10 }
+          - { id: domain.security-privacy-identity, canonicalName: Security Privacy and Identity, displayName: 安全隐私与身份, shortLabel: 安全, colorToken: domain.security-privacy-identity, sortOrder: 11 }
+          - { id: domain.ai-intelligent-systems, canonicalName: AI and Intelligent Systems, displayName: AI 与智能系统, shortLabel: AI, colorToken: domain.ai-intelligent-systems, sortOrder: 12 }
+
+    SearchReact:
+      summary: Search result without echoing query text
+      value:
+        meta:
+          requestId: req_01J00000000000000000000002
+          contractVersion: 1.0.0
+          dataVersion: 1.0.0-alpha.1
+          dataHash: sha256:6c937f82d9155bbfa58fd2b0c9bb8e8e0c7352d9a638e1bf5438b25c9bf2a12e
+          layoutVersion: null
+          locale: zh-CN
+        items: []
+        nextCursor: null
+        totalIsExact: true
+
+    EntityReact:
+      summary: Shape-only example; published facts must come from reviewed data
+      value:
+        meta:
+          requestId: req_01J00000000000000000000003
+          contractVersion: 1.0.0
+          dataVersion: 1.0.0-alpha.1
+          dataHash: sha256:6c937f82d9155bbfa58fd2b0c9bb8e8e0c7352d9a638e1bf5438b25c9bf2a12e
+          layoutVersion: null
+          locale: zh-CN
+        detail:
+          entity:
+            id: tech.react
+            entityType: library
+            resourceKind: tech
+            canonicalName: React
+            displayName: React
+            slug: react
+            canonicalPath: /zh/tech/react
+            primaryRootDomainId: domain.application-platforms-frameworks
+            summary: 用于构建用户界面的 JavaScript 库。
+            primaryContainerId: tech.frontend
+            landmark: null
+            visualIdentity: { mode: text, key: react, assetUrl: null, alt: React, sourceId: null }
+            firstPublicAt: { precision: year, display: '2013', start: { year: 2013 }, end: null }
+          aliases: []
+          descriptionMarkdown: ''
+          primaryContainer: null
+          classifications: []
+          lifecycle: { status: active, displayLabel: 活跃, statementIds: [statement.react-lifecycle] }
+          review: { status: current, reviewedAt: '2026-07-19T10:00:00Z', reviewDueAt: '2026-10-17T10:00:00Z' }
+          relations: []
+          events: []
+          eraVersions: []
+          statements:
+            - id: statement.react-definition
+              claimKind: entity_field
+              claimText: React 是用于构建用户界面的 JavaScript 库。
+              status: accepted
+              sourceIds: [source.react-official-learn]
+              primarySourceId: source.react-official-learn
+              reviewedAt: '2026-07-19T10:00:00Z'
+              discussionUrl: null
+          sources:
+            - id: source.react-official-learn
+              sourceType: official_documentation
+              title: React documentation
+              publisher: React
+              url: https://react.dev/learn
+              archiveUrl: null
+              language: en
+              publishedAt: null
+              updatedAt: null
+              accessedAt: '2026-07-19'
+              license: null
+              contentHash: null
+          links:
+            - kind: official_site
+              label: 官方网站
+              url: https://react.dev/
+              sourceId: source.react-official-learn
+          issueReportUrl: https://github.com/seekstar/techmap-data/issues/new?entity=tech.react&dataVersion=1.0.0-alpha.1
